@@ -1,0 +1,57 @@
+version: '2.1'
+networks:
+  test:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.200.0.0/24
+        gateway: 172.200.0.1
+services:
+  elasticsearch:
+    image: "elasticsearch:5.1.1-alpine"
+    environment:
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - 9200:9200
+      - 9300:9300
+    mem_limit: 1g
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./elasticsearch/data:/var/data/elasticsearch
+      - ./elasticsearch/log:/var/log/elasticsearch
+      - ./elasticsearch/config:/usr/share/elasticsearch/config
+    networks:
+      - test
+  logstash:
+    image: "logstash:5.1.1-alpine"
+    volumes:
+      - ./logstash/conf.d:/etc/logstash/conf.d
+      - ./logstash/config:/usr/share/logstash/config
+      - ./logstash/data:/var/data/logstash
+      - ./logstash/inputs:/inputs
+      - ./logstash/elasticsearch_templates:/etc/logstash/elasticsearch_templates
+    links:
+      - elasticsearch
+    ports:
+      - 9647:9647
+    networks:
+      - test
+  kibana:
+    image: "kibana:5.1.1"
+    links:
+      - elasticsearch
+    ports:
+      - 5601:5601
+    networks:
+      - test
